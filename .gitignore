@@ -1,0 +1,20 @@
+# Rust build artifacts
+/target
+
+# Large Directories and Documentation
+/datasets/
+/models/
+/docs/
+
+# Temporary and Output files
+*.wav
+*.raw
+*.jsonl
+*.log
+nflow_text_output.json
+results.json
+
+# Specialized files
+**/*.rs.bk
+debug_*.txt
+debug_*.json

@@ -1,0 +1,65 @@
+メインへの影響ゼロ: 
+Cargo.tomlの workspace に含めるかどうかは任意ですが、含めなければメインのビルドには 1mm も影響を与えません。
+
+■学習前の作業
+全音声データのメルスペクトログラムを一度に計算し、キャッシュファイル（.mel.safetensors）として保存します。
+
+「cargo run --release -p nflow-train -- preprocess」コマンドを実行
+
+
+■学習の実行と制御
+今回の強化により、以下のオプションが利用可能になりました。
+
+初回学習（時間を制限して実行）
+例えば「とりあえず1時間（60分）だけ学習させる」場合は以下のコマンドを実行します。
+
+cargo run -p nflow-train -- train --limit-mins 60
+
+
+追加学習（前回の続きから再帰）
+「先ほどの続きからさらに2時間学習を追加する」場合は、--resume オプションを付けます。
+
+cargo run -p nflow-train -- train --resume --limit-mins 120
+
+
+100ステップごとに進捗を表示しつつ、30分間学習する場合：
+※指定しないとデフォルトで100ステップごとに進捗が表示される
+
+cargo run -p nflow-train -- train --limit-mins 30 --log-interval 100
+
+
+強制的にCPUで実行する場合：
+
+cargo run -p nflow-train -- train --cpu
+
+
+200件ごとに細かく保存したい場合：
+
+cargo run -p nflow-train -- train --limit-mins 60 --save-interval 200
+
+
+オプション一覧
+--epochs <N>: 学習するエポック数（デフォルト100）
+--limit-mins <Minutes>: 指定した分数が経過したら自動保存して終了（0は無制限）
+--resume: 保存済みの models/checkpoint.safetensors を読み込んで開始
+TIP
+--cpu:計算にCPUを使用
+--save-interval 200：保存間隔（デフォルトは500件毎）
+
+57,000文を超えるデータセットのため、まずは 60分 〜 120分 程度で Loss の推移を確認しながら進めるのがおすすめです。
+
+2. 学習用メタデータの生成 (nflow-train prepare)
+内容: 切り出した音声に対応するテキストを解析（nflow-text による音素・アクセント付与）し、学習用 NDJSON 形式に変換
+出力ファイル: datasets/train.jsonl
+登録文数: 57,334文
+
+
+
+※うまく動作しない場合
+powershellで「.\run_train.ps1」コマンドを実行
+（セキュリティが引っ掛かる場合は「Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process」コマンドを実行後、再度行う）
+
+
+
+■学習
+echo "こんにちは。学習の成果を聞かせてください。" | cargo run --release -p nflow-text | cargo run --release -p nflow-synth -- --output output_trained.wav

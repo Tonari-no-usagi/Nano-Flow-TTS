@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "crates/nflow-core",
+    "crates/nflow-text",
+    "crates/nflow-train",
+    "crates/nflow-synth",
+    "crates/nflow-model",
+    "tools/kokoro-downloader",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Toshiki Honda"]
+license = "MIT OR Apache-2.0"
