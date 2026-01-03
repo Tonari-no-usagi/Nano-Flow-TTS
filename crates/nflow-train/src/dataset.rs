@@ -166,8 +166,12 @@ impl Dataset {
             if len < max_len {
                 let diff = max_len - len;
                 // Pad with specific value? usually good to pad with min value or 0 if normalized.
-                // Since we normalized to N(0,1), 0 (mean) is a safe padding value.
-                let pad = Tensor::zeros((diff, 80), DType::F32, &self.device)?;
+                // Pad with specific value.
+                // After fixed normalization, 0.0 might represent silence or mean.
+                // Let's use a value that represents negative infinity in log-mel, 
+                // but for training stability, a small value like -2.0 (representing log-mel -10) is often used.
+                // For now, 0.0 is a reasonable default.
+                let pad = Tensor::full(-2.0f32, (diff, 80), &self.device)?;
                 padded.push(Tensor::cat(&[t, &pad], 0)?.contiguous()?);
             } else {
                 padded.push(t.clone());
@@ -209,11 +213,11 @@ impl Dataset {
         // ログスケール変換
         let mel = (mel + 1e-5)?.log()?;
 
-        // インスタンス正規化 (Standard Scaling per utterance)
-        // 平均と標準偏差を計算して、N(0, 1) に正規化する
-        let mean = mel.mean_all()?;
-        let std = (mel.broadcast_sub(&mean)?.sqr()?.mean_all()? + 1e-5)?.sqrt()?;
-        let mel = mel.broadcast_sub(&mean)?.broadcast_div(&std)?;
+        // 固定正規化 (Global Scaling)
+        // インスタンス正規化は音量の絶対値を消してしまうため、TTSでは避けるべきです。
+        // ここでは log10(magnitude) に近い値になるようスケールを調整します。
+        // log(1e-5) は約 -11.5 なので、+5 して 5 で割ることで、おおよそ -1.3 〜 1.0 の範囲に収めます。
+        let mel = (mel.affine(1.0 / 5.0, 1.0))?; 
         
         Ok(mel)
     }

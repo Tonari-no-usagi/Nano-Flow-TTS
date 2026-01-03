@@ -55,7 +55,7 @@ pub struct TrainArgs {
     pub save_interval: usize,
 
     /// バッチサイズ
-    #[arg(long, default_value_t = 8)]
+    #[arg(long, default_value_t = 16)]
     pub batch_size: usize,
 
     /// 学習に使用する最大フレーム数（メルスペクトログラムの長さ）
@@ -65,6 +65,26 @@ pub struct TrainArgs {
     /// 学習率 (Max)
     #[arg(long, default_value_t = 2e-4)]
     pub learning_rate: f64,
+
+    /// モデルの次元 (Encoder/Decoder)
+    #[arg(long, default_value_t = 256)]
+    pub hidden_dim: usize,
+
+    /// エンコーダーのレイヤー数
+    #[arg(long, default_value_t = 12)]
+    pub enc_layers: usize,
+
+    /// デコーダーのレイヤー数
+    #[arg(long, default_value_t = 12)]
+    pub dec_layers: usize,
+
+    /// tのサンプリング最小値 (0.0 - 1.0)
+    #[arg(long, default_value_t = 0.0)]
+    pub t_min: f32,
+
+    /// tのサンプリング最大値 (0.0 - 1.0)
+    #[arg(long, default_value_t = 1.0)]
+    pub t_max: f32,
 }
 
 struct LRScheduler {
@@ -120,10 +140,10 @@ fn train(args: TrainArgs) -> Result<()> {
 
     // モデルパラメータの設定
     let vocab_size = tokenizer.vocab_size();
-    let enc_dim = 64; // 低スペック向けに控えめにする
-    let enc_layers = 4; // 少しレイヤーを深めにする
+    let enc_dim = args.hidden_dim;
+    let enc_layers = args.enc_layers;
     let dec_output_dim = 80;
-    let dec_layers = 4;
+    let dec_layers = args.dec_layers;
 
     // 変数管理とモデルの初期化
     let mut varmap = VarMap::new();
@@ -240,7 +260,14 @@ fn train(args: TrainArgs) -> Result<()> {
 
             // Flow Matching
             let x_0 = Tensor::randn(0f32, 1f32, mel_batch.shape(), &device)?;
-            let t_val: f32 = rand::random();
+            
+            // tのサンプリング範囲を制限
+            let t_val: f32 = if args.t_min >= args.t_max {
+                args.t_min.clamp(0.0, 1.0)
+            } else {
+                let r: f32 = rand::random();
+                args.t_min + r * (args.t_max - args.t_min)
+            };
             let t = Tensor::from_slice(&[t_val], (1,), &device)?;
             
             let x_t = {

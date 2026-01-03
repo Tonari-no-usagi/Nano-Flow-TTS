@@ -41,10 +41,10 @@ impl Synthesizer {
 
         let model = NanoFlowModel::new(
             tokenizer.vocab_size(),
-            64,  // enc_dim
-            4,   // enc_layers
+            256, // enc_dim
+            12,  // enc_layers
             80,  // dec_output_dim
-            4,   // dec_layers
+            12,  // dec_layers
             vm,
         )?;
 
@@ -87,7 +87,7 @@ impl Synthesizer {
             )
         };
 
-        let steps = 4; // RK2 ソルバーにより少ないステップで高速生成
+        let steps = 25; // 4から25に引き上げ。RTX 2070なら十分高速に動作します。
         let output = self.model.generate(&p_expanded, &a_expanded, steps, &self.device)?;
         // output: [1, total_frames, 80]
         

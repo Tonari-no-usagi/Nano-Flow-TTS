@@ -32,9 +32,11 @@ impl GriffinLim {
 
     /// メルスペクトログラム [frames, 80] を波形に変換
     pub fn decode(&self, mel: &Tensor, iterations: usize) -> Result<Vec<f32>> {
-        // 1. Log-Mel -> Linear Magnitude
+        // 1. Inverse Normalization -> Log-Mel -> Linear Magnitude
         // mel: [1, seq_len, 80] -> [seq_len, 80]
         let mel = mel.squeeze(0)?;
+        // 逆正規化: (x - 1.0) * 5.0
+        let mel = mel.affine(5.0, -5.0)?; 
         let mag = mel.exp()?;
         let linear_mag = mag.matmul(&self.mel_filter_inv)?; // [seq_len, 513]
         let linear_mag_vec = linear_mag.to_vec2::<f32>()?;
